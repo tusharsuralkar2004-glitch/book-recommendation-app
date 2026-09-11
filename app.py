@@ -60,8 +60,9 @@ if st.button("Get Recommendations", type="primary"):
 
         st.success(f"**Predicted Genre:** {genre}")
         st.subheader("Top 5 Recommended Books")
-        for i, row in recommendations.iterrows():
-            st.markdown(f"**{i+1}. {row['Title']}**  \n*by {row['Authors']}*")
 
-st.markdown("---")
-st.caption("M.Sc. Statistics Project — Genre classification (TF-IDF + Logistic Regression) with content-based recommendation (cosine similarity).")
+        import urllib.parse
+        for i, row in recommendations.iterrows():
+            search_query = urllib.parse.quote(f"{row['Title']} {row['Authors']}")
+            book_url = f"https://www.google.com/search?tbm=bks&q={search_query}"
+            st.markdown(f"**{i+1}. [{row['Title']}]({book_url})**  \n*by {row['Authors']}*")
