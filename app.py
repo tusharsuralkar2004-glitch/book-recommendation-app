@@ -81,9 +81,8 @@ def get_book_details(title, author, fallback_description=""):
 
     shop_query = urllib.parse.quote(f"{title} {author}")
     amazon_link = f"https://www.amazon.in/s?k={shop_query}"
-    flipkart_link = f"https://www.flipkart.com/search?q={shop_query}"
 
-    return info_link, description, amazon_link, flipkart_link
+    return info_link, description, amazon_link
     # ---------- UI ----------
 st.title("📚 Book Recommendation System")
 st.write("Enter a book description or the kind of story you're looking for, and get 5 similar book recommendations based on genre and content.")
@@ -105,19 +104,18 @@ if st.button("Get Recommendations", type="primary"):
         st.subheader("Top 5 Recommended Books")
 
         for i, row in recommendations.iterrows():
-                book_url, description, amazon_link, flipkart_link = get_book_details(
+            book_url, description, amazon_link = get_book_details(
                 row['Title'], row['Authors'], row['Description']
-                )
-                st.markdown(f"**{i+1}. [{row['Title']}]({book_url})**  \n*by {row['Authors']}*")
+            )
+            st.markdown(f"**{i+1}. [{row['Title']}]({book_url})**  \n*by {row['Authors']}*")
     
-                if description:
-                    short_desc = description[:200] + "..." if len(description) > 200 else description
-                    st.caption(short_desc)
+            if description:
+                if len(description) > 200:
+                    st.caption(description[:200] + "...")
+                    with st.expander("Read full description"):
+                        st.write(description)
+                else:
+                    st.caption(description)
     
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.link_button("🛒 Buy on Amazon", amazon_link, use_container_width=True)
-                with col2:
-                    st.link_button("🛒 Buy on Flipkart", flipkart_link, use_container_width=True)
-    
-                st.markdown("---")
+            st.link_button("🛒 Buy on Amazon", amazon_link, use_container_width=True)
+            st.markdown("---")
