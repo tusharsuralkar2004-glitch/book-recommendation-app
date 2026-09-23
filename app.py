@@ -47,6 +47,7 @@ def get_book_details(title, author, fallback_description=""):
     import urllib.parse
     info_link = None
     description = fallback_description
+    image_url = None
 
     try:
         query = f"intitle:{title} inauthor:{author}"
@@ -59,6 +60,8 @@ def get_book_details(title, author, fallback_description=""):
             api_desc = book_info.get("description", "")
             if api_desc:
                 description = api_desc
+            image_links = book_info.get("imageLinks", {})
+            image_url = image_links.get("thumbnail") or image_links.get("smallThumbnail")
     except Exception:
         pass
 
@@ -72,6 +75,9 @@ def get_book_details(title, author, fallback_description=""):
                 key = data["docs"][0].get("key")
                 if key:
                     info_link = f"https://openlibrary.org{key}"
+                cover_id = data["docs"][0].get("cover_i")
+                if cover_id and not image_url:
+                    image_url = f"https://covers.openlibrary.org/b/id/{cover_id}-M.jpg"
         except Exception:
             pass
 
@@ -82,8 +88,7 @@ def get_book_details(title, author, fallback_description=""):
     shop_query = urllib.parse.quote(f"{title} {author}")
     amazon_link = f"https://www.amazon.in/s?k={shop_query}"
 
-    return info_link, description, amazon_link
-    # ---------- UI ----------
+    return info_link, description, amazon_link, image_url    # ---------- UI ----------
 st.title("📚 Book Recommendation System")
 st.write("Enter a book description or the kind of story you're looking for, and get 5 similar book recommendations based on genre and content.")
 
@@ -104,18 +109,29 @@ if st.button("Get Recommendations", type="primary"):
         st.subheader("Top 5 Recommended Books")
 
         for i, row in recommendations.iterrows():
-            book_url, description, amazon_link = get_book_details(
+            book_url, description, amazon_link, image_url = get_book_details(
                 row['Title'], row['Authors'], row['Description']
             )
-            st.markdown(f"**{i+1}. [{row['Title']}]({book_url})**  \n*by {row['Authors']}*")
     
-            if description:
-                if len(description) > 200:
-                    st.caption(description[:200] + "...")
-                    with st.expander("Read full description"):
-                        st.write(description)
+            img_col, info_col = st.columns([1, 4])
+    
+            with img_col:
+                if image_url:
+                    st.image(image_url, width=90)
                 else:
-                    st.caption(description)
+                    st.markdown("📚")
     
-            st.link_button("🛒 Buy on Amazon", amazon_link, use_container_width=True)
+            with info_col:
+                st.markdown(f"**{i+1}. [{row['Title']}]({book_url})**  \n*by {row['Authors']}*")
+    
+                if description:
+                    if len(description) > 200:
+                        st.caption(description[:200] + "...")
+                        with st.expander("Read full description"):
+                            st.write(description)
+                    else:
+                        st.caption(description)
+    
+                st.link_button("🛒 Buy on Amazon", amazon_link, use_container_width=True)
+    
             st.markdown("---")
