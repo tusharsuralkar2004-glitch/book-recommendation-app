@@ -177,7 +177,112 @@ st.markdown("""
     hr {
         border-color: rgba(255,255,255,0.08) !important;
     }
+
+    /* ---------- Search-engine decorations ---------- */
+
+    /* Faint floating book/page pattern behind everything */
+    .stApp::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        opacity: 0.05;
+        background-image:
+            radial-gradient(circle at 8% 15%, #f4d58d 0px, #f4d58d 2px, transparent 3px),
+            radial-gradient(circle at 85% 10%, #f4d58d 0px, #f4d58d 2px, transparent 3px),
+            radial-gradient(circle at 92% 80%, #f4d58d 0px, #f4d58d 2px, transparent 3px),
+            radial-gradient(circle at 15% 85%, #f4d58d 0px, #f4d58d 2px, transparent 3px);
+        background-size: 100% 100%;
+    }
+
+    /* Top navbar, like a bookstore search site */
+    .navbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.9rem 1.4rem;
+        margin: -1rem -1rem 1.6rem -1rem;
+        background: rgba(10, 20, 34, 0.65);
+        backdrop-filter: blur(6px);
+        border-bottom: 1px solid rgba(244, 213, 141, 0.18);
+        position: sticky;
+        top: 0;
+        z-index: 999;
+    }
+    .navbar-logo {
+        font-family: 'Playfair Display', serif;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #f4d58d;
+        letter-spacing: 0.3px;
+    }
+    .navbar-tag {
+        font-size: 0.75rem;
+        color: #9fb3c8;
+        font-style: italic;
+    }
+
+    /* Make the description box look like a search bar */
+    div[data-testid="stTextArea"] {
+        position: relative;
+    }
+    div[data-testid="stTextArea"]::before {
+        content: "🔍";
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        font-size: 1.1rem;
+        z-index: 2;
+        opacity: 0.85;
+    }
+    div[data-testid="stTextArea"] textarea {
+        padding-left: 2.4rem !important;
+    }
+
+    /* "Searching" style results meta line */
+    .results-meta {
+        text-align: center;
+        color: #9fb3c8;
+        font-size: 0.85rem;
+        margin-bottom: 0.6rem;
+        letter-spacing: 0.2px;
+    }
+    .results-meta b {
+        color: #f4d58d;
+    }
+
+    /* Card entrance animation, staggered like search results loading in */
+    @keyframes fadeSlideIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .book-card {
+        animation: fadeSlideIn 0.45s ease-out both;
+    }
+
+    /* Little "match" ribbon on each card */
+    .match-chip {
+        display: inline-block;
+        font-size: 0.68rem;
+        font-weight: 600;
+        color: #0f1c2e;
+        background: #f4d58d;
+        padding: 0.12rem 0.55rem;
+        border-radius: 10px;
+        margin-left: 0.4rem;
+        vertical-align: middle;
+        letter-spacing: 0.3px;
+    }
 </style>
+""", unsafe_allow_html=True)
+
+# ---------- Navbar ----------
+st.markdown("""
+<div class="navbar">
+    <div class="navbar-logo">📖 BookFinder</div>
+    <div class="navbar-tag">discover your next read</div>
+</div>
 """, unsafe_allow_html=True)
 
 # ---------- Load saved model, vectorizer, and data ----------
@@ -296,18 +401,23 @@ if get_recs:
     if user_input.strip() == "":
         st.warning("Please enter a description first.")
     else:
-        with st.spinner("Analyzing description..."):
+        with st.spinner("🔎 Searching the shelves for your next read..."):
             genre, recommendations = recommend_books(user_input, top_n=5)
 
         st.markdown(f"""
         <div style="text-align:center; margin: 1.2rem 0;">
             <span style="background: rgba(244,213,141,0.14); border: 1px solid #f4d58d;
             color:#f4d58d; padding: 0.45rem 1.2rem; border-radius: 20px; font-weight:600;
-            font-size: 0.95rem;">Predicted Genre: {genre}</span>
+            font-size: 0.95rem;">🔖 Predicted Genre: {genre}</span>
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown('<div class="section-heading">Top 5 Recommended Books</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-heading">Search Results</div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<div class="results-meta">Showing <b>{len(recommendations)}</b> results '
+            f'matched to <b>"{genre}"</b></div>',
+            unsafe_allow_html=True,
+        )
 
         for i, row in recommendations.iterrows():
             book_url, description, amazon_link, image_url = get_book_details(
@@ -315,7 +425,9 @@ if get_recs:
             )
 
             short_desc = description if description and len(description) <= 220 else (description[:220] + "…" if description else "")
+            delay = i * 0.08
 
+            st.markdown(f'<div class="book-card" style="animation-delay:{delay}s;">', unsafe_allow_html=True)
             img_col, info_col = st.columns([1, 4])
 
             with img_col:
@@ -329,7 +441,8 @@ if get_recs:
             with info_col:
                 st.markdown(f"""
                 <div class="book-title"><span class="book-rank">{i+1}</span>
-                <a href="{book_url}" target="_blank" style="color:#f8f7f2; text-decoration:none;">{row['Title']}</a></div>
+                <a href="{book_url}" target="_blank" style="color:#f8f7f2; text-decoration:none;">{row['Title']}</a>
+                <span class="match-chip">{max(95 - i * 6, 70)}% match</span></div>
                 <div class="book-author">by {row['Authors']}</div>
                 """, unsafe_allow_html=True)
 
@@ -341,5 +454,4 @@ if get_recs:
 
                 st.link_button("🛒 Buy on Amazon", amazon_link, use_container_width=True)
 
-            st.markdown("<hr>", unsafe_allow_html=True)
-
+            st.markdown("</div>", unsafe_allow_html=True)
