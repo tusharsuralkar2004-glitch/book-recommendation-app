@@ -38,7 +38,7 @@ def recommend_books(description, top_n=5):
     similarities = cosine_similarity(new_tfidf, genre_tfidf).flatten()
     top_indices = similarities.argsort()[-top_n:][::-1]
 
-    results = genre_books.iloc[top_indices][['Title', 'Authors']].reset_index(drop=True)
+    results = genre_books.iloc[top_indices][['Title', 'Authors', 'Description']].reset_index(drop=True)
     return predicted_genre, results
 
 @st.cache_data(ttl=3600, show_spinner=False)
