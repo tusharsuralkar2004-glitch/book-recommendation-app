@@ -61,23 +61,27 @@ def get_book_details(title, author, fallback_description=""):
             if api_desc:
                 description = api_desc
             image_links = book_info.get("imageLinks", {})
-            image_url = image_links.get("thumbnail") or image_links.get("smallThumbnail")
+            raw_image = image_links.get("thumbnail") or image_links.get("smallThumbnail")
+            if raw_image:
+                image_url = raw_image.replace("http://", "https://")
     except Exception:
         pass
 
-    if not info_link:
+    if not info_link or not image_url:
         try:
             query = urllib.parse.quote(f"{title} {author}")
             url = f"https://openlibrary.org/search.json?q={query}&limit=1"
             response = requests.get(url, timeout=3)
             data = response.json()
             if data.get("docs"):
-                key = data["docs"][0].get("key")
-                if key:
-                    info_link = f"https://openlibrary.org{key}"
-                cover_id = data["docs"][0].get("cover_i")
-                if cover_id and not image_url:
-                    image_url = f"https://covers.openlibrary.org/b/id/{cover_id}-M.jpg"
+                if not info_link:
+                    key = data["docs"][0].get("key")
+                    if key:
+                        info_link = f"https://openlibrary.org{key}"
+                if not image_url:
+                    cover_id = data["docs"][0].get("cover_i")
+                    if cover_id:
+                        image_url = f"https://covers.openlibrary.org/b/id/{cover_id}-M.jpg"
         except Exception:
             pass
 
@@ -85,10 +89,16 @@ def get_book_details(title, author, fallback_description=""):
         search_query = urllib.parse.quote(f"{title} {author}")
         info_link = f"https://www.google.com/search?tbm=bks&q={search_query}"
 
+    
+    if not image_url:
+        initial = title[0].upper() if title else "B"
+        image_url = f"https://placehold.co/90x120/1C7293/FFFFFF?text={initial}"
+
     shop_query = urllib.parse.quote(f"{title} {author}")
     amazon_link = f"https://www.amazon.in/s?k={shop_query}"
 
-    return info_link, description, amazon_link, image_url    # ---------- UI ----------
+    return info_link, description, amazon_link, image_url
+    # ---------- UI ----------
 st.title("📚 Book Recommendation System")
 st.write("Enter a book description or the kind of story you're looking for, and get 5 similar book recommendations based on genre and content.")
 
