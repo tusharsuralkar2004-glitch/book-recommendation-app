@@ -105,19 +105,19 @@ if st.button("Get Recommendations", type="primary"):
         st.subheader("Top 5 Recommended Books")
 
         for i, row in recommendations.iterrows():
-            book_url, description, amazon_link, flipkart_link = get_book_details(
-            row['Title'], row['Authors'], row['Description']
-            )
-            st.markdown(f"**{i+1}. [{row['Title']}]({book_url})**  \n*by {row['Authors']}*")
-
-            if description:
-                short_desc = description[:200] + "..." if len(description) > 200 else description
-                st.caption(short_desc)
-
-            col1, col2 = st.columns(2)
-            with col1:
-                st.link_button("🛒 Buy on Amazon", amazon_link, use_container_width=True)
-            with col2:
-                st.link_button("🛒 Buy on Flipkart", flipkart_link, use_container_width=True)
-
-            st.markdown("---")
+                book_url, description, amazon_link, flipkart_link = get_book_details(
+                row['Title'], row['Authors'], row['Description']
+                )
+                st.markdown(f"**{i+1}. [{row['Title']}]({book_url})**  \n*by {row['Authors']}*")
+    
+                if description:
+                    short_desc = description[:200] + "..." if len(description) > 200 else description
+                    st.caption(short_desc)
+    
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.link_button("🛒 Buy on Amazon", amazon_link, use_container_width=True)
+                with col2:
+                    st.link_button("🛒 Buy on Flipkart", flipkart_link, use_container_width=True)
+    
+                st.markdown("---")
