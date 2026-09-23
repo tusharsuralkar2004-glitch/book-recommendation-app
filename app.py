@@ -42,37 +42,49 @@ def recommend_books(description, top_n=5):
     return predicted_genre, results
 
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_book_link(title, author):
+def get_book_details(title, author, fallback_description=""):
     import requests
     import urllib.parse
+    info_link = None
+    description = fallback_description
+
     try:
         query = f"intitle:{title} inauthor:{author}"
         url = f"https://www.googleapis.com/books/v1/volumes?q={query}&maxResults=1"
-        response = requests.get(url, timeout=5)
+        response = requests.get(url, timeout=3)
         data = response.json()
         if data.get("totalItems", 0) > 0:
             book_info = data["items"][0]["volumeInfo"]
-            link = book_info.get("infoLink") or book_info.get("previewLink")
-            if link:
-                return link
+            info_link = book_info.get("infoLink") or book_info.get("previewLink")
+            api_desc = book_info.get("description", "")
+            if api_desc:
+                description = api_desc
     except Exception:
         pass
 
-    try:
-        query = urllib.parse.quote(f"{title} {author}")
-        url = f"https://openlibrary.org/search.json?q={query}&limit=1"
-        response = requests.get(url, timeout=5)
-        data = response.json()
-        if data.get("docs"):
-            key = data["docs"][0].get("key")
-            if key:
-                return f"https://openlibrary.org{key}"
-    except Exception:
-        pass
+    if not info_link:
+        try:
+            query = urllib.parse.quote(f"{title} {author}")
+            url = f"https://openlibrary.org/search.json?q={query}&limit=1"
+            response = requests.get(url, timeout=3)
+            data = response.json()
+            if data.get("docs"):
+                key = data["docs"][0].get("key")
+                if key:
+                    info_link = f"https://openlibrary.org{key}"
+        except Exception:
+            pass
 
-    search_query = urllib.parse.quote(f"{title} {author}")
-    return f"https://www.google.com/search?tbm=bks&q={search_query}"
-# ---------- UI ----------
+    if not info_link:
+        search_query = urllib.parse.quote(f"{title} {author}")
+        info_link = f"https://www.google.com/search?tbm=bks&q={search_query}"
+
+    shop_query = urllib.parse.quote(f"{title} {author}")
+    amazon_link = f"https://www.amazon.in/s?k={shop_query}"
+    flipkart_link = f"https://www.flipkart.com/search?q={shop_query}"
+
+    return info_link, description, amazon_link, flipkart_link
+    # ---------- UI ----------
 st.title("📚 Book Recommendation System")
 st.write("Enter a book description or the kind of story you're looking for, and get 5 similar book recommendations based on genre and content.")
 
@@ -93,5 +105,19 @@ if st.button("Get Recommendations", type="primary"):
         st.subheader("Top 5 Recommended Books")
 
         for i, row in recommendations.iterrows():
-            book_url = get_book_link(row['Title'], row['Authors'])
+            book_url, description, amazon_link, flipkart_link = get_book_details(
+            row['Title'], row['Authors'], row['Description']
+            )
             st.markdown(f"**{i+1}. [{row['Title']}]({book_url})**  \n*by {row['Authors']}*")
+
+            if description:
+                short_desc = description[:200] + "..." if len(description) > 200 else description
+                st.caption(short_desc)
+
+            col1, col2 = st.columns(2)
+            with col1:
+                st.link_button("🛒 Buy on Amazon", amazon_link, use_container_width=True)
+            with col2:
+                st.link_button("🛒 Buy on Flipkart", flipkart_link, use_container_width=True)
+
+            st.markdown("---")
