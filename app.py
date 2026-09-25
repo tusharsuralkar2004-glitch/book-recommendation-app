@@ -367,7 +367,7 @@ def get_book_details(title, author, fallback_description=""):
         pass
 
     if not info_link or not image_url:
-      try:
+        try:
             query = urllib.parse.quote(f"{title} {author}")
             url = f"https://openlibrary.org/search.json?q={query}&limit=1"
             response = requests.get(url, timeout=3)
