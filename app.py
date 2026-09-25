@@ -367,21 +367,23 @@ def get_book_details(title, author, fallback_description=""):
         pass
 
     if not info_link or not image_url:
-        try:
-            ia_query = urllib.parse.quote(f"{title} {author}")
-            ia_url = f"https://archive.org/advancedsearch.php?q=title:({ia_query})&fl[]=identifier&fl[]=title&rows=1&output=json"
-            ia_response = requests.get(ia_url, timeout=3).json()
-            docs = ia_response.get("response", {}).get("docs", [])
-            if docs:
-                identifier = docs[0]["identifier"]
-                ebook_link = f"https://archive.org/details/{identifier}"
-                ia_cover = f"https://archive.org/services/img/{identifier}"
+      try:
+            query = urllib.parse.quote(f"{title} {author}")
+            url = f"https://openlibrary.org/search.json?q={query}&limit=1"
+            response = requests.get(url, timeout=3)
+            data = response.json()
+            if data.get("docs"):
+                if not info_link:
+                    key = data["docs"][0].get("key")
+                    if key:
+                        info_link = f"https://openlibrary.org{key}"
                 if not image_url:
-                    image_url = ia_cover
-            else:
-                ebook_link = None
+                    cover_id = data["docs"][0].get("cover_i")
+                    if cover_id:
+                        image_url = f"https://covers.openlibrary.org/b/id/{cover_id}-M.jpg"
         except Exception:
-            ebook_link = None
+            pass
+
     if not info_link:
         search_query = urllib.parse.quote(f"{title} {author}")
         info_link = f"https://www.google.com/search?tbm=bks&q={search_query}"
