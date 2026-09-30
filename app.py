@@ -336,7 +336,20 @@ def recommend_books(description, top_n=5):
     similarities = cosine_similarity(new_tfidf, genre_tfidf).flatten()
     top_indices = similarities.argsort()[-top_n:][::-1]
 
+    feature_names = vectorizer.get_feature_names_out()
+    new_arr = new_tfidf.toarray()[0]
+
+    keyword_list = []
+    for idx in top_indices:
+        book_arr = genre_tfidf[idx].toarray()[0]
+        overlap = new_arr * book_arr
+        top_terms_idx = overlap.argsort()[-3:][::-1]
+        terms = [feature_names[t] for t in top_terms_idx if overlap[t] > 0]
+        keyword_list.append(", ".join(terms) if terms else "general theme")
+
     results = genre_books.iloc[top_indices][['Title', 'Authors', 'Description']].reset_index(drop=True)
+    results['Similarity'] = similarities[top_indices]
+    results['Matched_Keywords'] = keyword_list
     return predicted_genre, results
 
 
@@ -407,6 +420,24 @@ st.markdown("""
     <div class="hero-rule"></div>
 </div>
 """, unsafe_allow_html=True)
+with st.expander("📊 View Model Performance (Classification Report)"):
+    st.markdown("**Overall test-set accuracy: 72%** across 20 genre classes (baseline: 5%)")
+    perf_data = {
+        "Genre": ["Cooking", "Fiction", "Computers", "Business & Economics", "Religion",
+                  "Health & Fitness", "Juvenile Fiction", "Travel", "Political Science",
+                  "Sports & Recreation", "Family & Relationships", "History",
+                  "Biography & Autobiography", "Juvenile Nonfiction", "Science", "Humor",
+                  "Reference", "Self-help", "Social Science", "Young Adult Fiction"],
+        "Precision": [0.94, 0.94, 0.86, 0.83, 0.79, 0.78, 0.77, 0.70, 0.63, 0.61,
+                      0.60, 0.52, 0.52, 0.53, 0.49, 0.46, 0.40, 0.45, 0.37, 0.33],
+        "Recall": [0.94, 0.78, 0.82, 0.78, 0.70, 0.78, 0.69, 0.80, 0.71, 0.73,
+                   0.69, 0.62, 0.57, 0.50, 0.69, 0.65, 0.55, 0.52, 0.40, 0.67],
+        "F1-score": [0.94, 0.86, 0.84, 0.80, 0.74, 0.78, 0.73, 0.75, 0.67, 0.66,
+                     0.64, 0.57, 0.54, 0.51, 0.57, 0.54, 0.46, 0.48, 0.39, 0.44],
+    }
+    perf_df = pd.DataFrame(perf_data)
+    st.dataframe(perf_df, use_container_width=True, hide_index=True)
+    st.caption("Metrics computed on a held-out test set of 10,687 records during model training.")
 
 user_input = st.text_area(
     "Book description",
@@ -471,8 +502,10 @@ if get_recs:
                 st.markdown(f"""
                 <div class="book-title"><span class="book-rank" style="--spine-color:{spine};">{i+1}</span>
                 <a href="{book_url}" target="_blank" style="color:#2B2118; text-decoration:none;">{row['Title']}</a>
-                <span class="match-chip">{max(95 - i * 6, 70)}% match</span></div>
+                <span class="match-chip">{row['Similarity']*100:.0f}% text similarity</span>
                 <div class="book-author">by {row['Authors']}</div>
+                 f"<div style='font-size:0.78rem;color:#8A7455;margin-bottom:0.3rem;'>"
+                 f"<em>Matched on:</em> {row['Matched_Keywords']}</div>",
                 """, unsafe_allow_html=True)
 
                 if short_desc:
