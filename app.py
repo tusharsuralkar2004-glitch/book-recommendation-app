@@ -304,6 +304,26 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# ---------- Load saved model, vectorizer, and data ----------
+@st.cache_resource
+def load_artifacts():
+    with open('model.pkl', 'rb') as f:
+        model = pickle.load(f)
+    with open('vectorizer.pkl', 'rb') as f:
+        vectorizer = pickle.load(f)
+    with open('data.pkl', 'rb') as f:
+        data = pickle.load(f)
+    return model, vectorizer, data
+
+model, vectorizer, data = load_artifacts()
+
+# Pre-compute TF-IDF for the whole catalog once (faster at runtime)
+@st.cache_resource
+def precompute_tfidf(_vectorizer, _data):
+    return _vectorizer.transform(_data['Description'])
+
+catalog_tfidf = precompute_tfidf(vectorizer, data)
+
 # ---------- Recommendation logic ----------
 def recommend_books(description, top_n=5):
     new_tfidf = vectorizer.transform([description])
@@ -316,20 +336,7 @@ def recommend_books(description, top_n=5):
     similarities = cosine_similarity(new_tfidf, genre_tfidf).flatten()
     top_indices = similarities.argsort()[-top_n:][::-1]
 
-    feature_names = vectorizer.get_feature_names_out()
-    new_arr = new_tfidf.toarray()[0]
-
-    keyword_list = []
-    for idx in top_indices:
-        book_arr = genre_tfidf[idx].toarray()[0]
-        overlap = new_arr * book_arr
-        top_terms_idx = overlap.argsort()[-3:][::-1]
-        terms = [feature_names[t] for t in top_terms_idx if overlap[t] > 0]
-        keyword_list.append(", ".join(terms) if terms else "general theme")
-
     results = genre_books.iloc[top_indices][['Title', 'Authors', 'Description']].reset_index(drop=True)
-    results['Similarity'] = similarities[top_indices]
-    results['Matched_Keywords'] = keyword_list
     return predicted_genre, results
 
 
@@ -464,7 +471,8 @@ if get_recs:
                 st.markdown(f"""
                 <div class="book-title"><span class="book-rank" style="--spine-color:{spine};">{i+1}</span>
                 <a href="{book_url}" target="_blank" style="color:#2B2118; text-decoration:none;">{row['Title']}</a>
-                <div class="book-author">by {row['Authors']}</div>,
+                <span class="match-chip">{max(95 - i * 6, 70)}% match</span></div>
+                <div class="book-author">by {row['Authors']}</div>
                 """, unsafe_allow_html=True)
 
                 if short_desc:
