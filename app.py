@@ -304,26 +304,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ---------- Load saved model, vectorizer, and data ----------
-@st.cache_resource
-def load_artifacts():
-    with open('model.pkl', 'rb') as f:
-        model = pickle.load(f)
-    with open('vectorizer.pkl', 'rb') as f:
-        vectorizer = pickle.load(f)
-    with open('data.pkl', 'rb') as f:
-        data = pickle.load(f)
-    return model, vectorizer, data
-
-model, vectorizer, data = load_artifacts()
-
-# Pre-compute TF-IDF for the whole catalog once (faster at runtime)
-@st.cache_resource
-def precompute_tfidf(_vectorizer, _data):
-    return _vectorizer.transform(_data['Description'])
-
-catalog_tfidf = precompute_tfidf(vectorizer, data)
-
 # ---------- Recommendation logic ----------
 def recommend_books(description, top_n=5):
     new_tfidf = vectorizer.transform([description])
@@ -420,24 +400,6 @@ st.markdown("""
     <div class="hero-rule"></div>
 </div>
 """, unsafe_allow_html=True)
-with st.expander("📊 View Model Performance (Classification Report)"):
-    st.markdown("**Overall test-set accuracy: 72%** across 20 genre classes (baseline: 5%)")
-    perf_data = {
-        "Genre": ["Cooking", "Fiction", "Computers", "Business & Economics", "Religion",
-                  "Health & Fitness", "Juvenile Fiction", "Travel", "Political Science",
-                  "Sports & Recreation", "Family & Relationships", "History",
-                  "Biography & Autobiography", "Juvenile Nonfiction", "Science", "Humor",
-                  "Reference", "Self-help", "Social Science", "Young Adult Fiction"],
-        "Precision": [0.94, 0.94, 0.86, 0.83, 0.79, 0.78, 0.77, 0.70, 0.63, 0.61,
-                      0.60, 0.52, 0.52, 0.53, 0.49, 0.46, 0.40, 0.45, 0.37, 0.33],
-        "Recall": [0.94, 0.78, 0.82, 0.78, 0.70, 0.78, 0.69, 0.80, 0.71, 0.73,
-                   0.69, 0.62, 0.57, 0.50, 0.69, 0.65, 0.55, 0.52, 0.40, 0.67],
-        "F1-score": [0.94, 0.86, 0.84, 0.80, 0.74, 0.78, 0.73, 0.75, 0.67, 0.66,
-                     0.64, 0.57, 0.54, 0.51, 0.57, 0.54, 0.46, 0.48, 0.39, 0.44],
-    }
-    perf_df = pd.DataFrame(perf_data)
-    st.dataframe(perf_df, use_container_width=True, hide_index=True)
-    st.caption("Metrics computed on a held-out test set of 10,687 records during model training.")
 
 user_input = st.text_area(
     "Book description",
@@ -502,10 +464,7 @@ if get_recs:
                 st.markdown(f"""
                 <div class="book-title"><span class="book-rank" style="--spine-color:{spine};">{i+1}</span>
                 <a href="{book_url}" target="_blank" style="color:#2B2118; text-decoration:none;">{row['Title']}</a>
-                <span class="match-chip">{row['Similarity']*100:.0f}% text similarity</span>
-                <div class="book-author">by {row['Authors']}</div>
-                 f"<div style='font-size:0.78rem;color:#8A7455;margin-bottom:0.3rem;'>"
-                 f"<em>Matched on:</em> {row['Matched_Keywords']}</div>",
+                <div class="book-author">by {row['Authors']}</div>,
                 """, unsafe_allow_html=True)
 
                 if short_desc:
